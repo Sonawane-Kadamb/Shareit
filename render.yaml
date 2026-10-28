@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: shareit
+    runtime: docker
+    plan: starter        # persistent disks need a paid plan on Render
+    disk:
+      name: data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: DATABASE_URL
+        value: sqlite:////data/shareit.db

@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ShareIt</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1c2330;--mut:#6b7585;--line:#e3e6ec;--pri:#2457d6;--ok:#17803d;--bad:#c0392b;--warn:#b7791f}
+*{box-sizing:border-box}body{margin:0;font:15px/1.45 system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:var(--card);border-bottom:1px solid var(--line);padding:10px 20px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+header b{font-size:18px;margin-right:12px}
+nav button,.btn{border:1px solid var(--line);background:var(--card);padding:6px 12px;border-radius:8px;cursor:pointer;font:inherit;color:var(--ink)}
+nav button.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+.btn.pri{background:var(--pri);color:#fff;border-color:var(--pri)}.btn.ok{background:var(--ok);color:#fff;border-color:var(--ok)}.btn.bad{background:var(--bad);color:#fff;border-color:var(--bad)}
+.btn.sm{padding:3px 9px;font-size:13px}
+main{max-width:1000px;margin:20px auto;padding:0 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.sp{flex:1}
+input,select,textarea{font:inherit;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:#fff;max-width:100%}
+textarea{width:100%}label{display:block;font-size:13px;color:var(--mut);margin:8px 0 3px}
+.mut{color:var(--mut);font-size:13px}.badge{padding:2px 8px;border-radius:99px;font-size:12px;background:#e8ebf1;font-weight:600;text-transform:capitalize}
+.badge.approved,.badge.returned,.badge.verified,.badge.resolved{background:#dcf3e4;color:var(--ok)}
+.badge.rejected,.badge.overdue,.badge.damage,.badge.no_show{background:#fbe1de;color:var(--bad)}
+.badge.pending,.badge.waitlisted,.badge.open,.badge.checked_in{background:#fdf0d5;color:var(--warn)}
+.modal{position:fixed;inset:0;background:#0007;display:flex;align-items:flex-start;justify-content:center;padding:30px 12px;overflow:auto;z-index:5}
+.modal>div{background:var(--card);border-radius:14px;padding:18px;max-width:640px;width:100%}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#1c2330;color:#fff;padding:10px 16px;border-radius:10px;max-width:90vw;z-index:9}
+.tl{border-left:2px solid var(--line);margin-left:6px;padding-left:12px}.tl div{margin-bottom:8px}
+.warn{background:#fdf0d5;border-radius:8px;padding:8px 10px;margin:8px 0;font-size:14px}.err{background:#fbe1de}
+table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:6px;border-bottom:1px solid var(--line);font-size:14px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="module">
+import React,{useState,useEffect} from "https://esm.sh/react@18.3.1";
+import {createRoot} from "https://esm.sh/react-dom@18.3.1/client";
+import htm from "https://esm.sh/htm@3.1.1";
+const h=htm.bind(React.createElement);
+let tok=localStorage.getItem("tok")||"";
+const api=async(path,method="GET",body)=>{
+  const r=await fetch("/api"+path,{method,headers:{"Content-Type":"application/json",...(tok?{Authorization:"Bearer "+tok}:{})},body:body?JSON.stringify(body):undefined});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok){const d=j.detail;throw typeof d==="string"?d:JSON.stringify(d)||"Request failed"}
+  return j;
+};
+const fmt=s=>s?new Date(s).toLocaleString([],{dateStyle:"medium",timeStyle:"short"}):"-";
+const loc=d=>{const p=n=>String(n).padStart(2,"0");return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`};
+const iso=v=>new Date(v).toISOString();
+const Badge=({s})=>h`<span class=${"badge "+s}>${String(s).replace("_"," ")}</span>`;
+const Modal=({onClose,children})=>h`<div class="modal" onClick=${e=>e.target===e.currentTarget&&onClose()}><div>${children}</div></div>`;
+
+function Login({onLogin,flash}){
+  const [email,setEmail]=useState("asha@demo.edu"),[password,setPw]=useState("demo123"),[name,setName]=useState(""),[reg,setReg]=useState(false);
+  const go=async()=>{try{
+    if(reg){const r=await api("/register","POST",{name,email,password});flash(r.message);setReg(false);return}
+    const r=await api("/login","POST",{email,password});tok=r.token;localStorage.setItem("tok",tok);onLogin(r.user)
+  }catch(e){flash(e)}};
+  const demos=[["asha","Student (eligible)"],["ben","Student (no credentials)"],["chen","Student (unverified)"],["owner","Owner"],["manager","Manager"],["admin","Admin"]];
+  return h`<main style="max-width:420px"><div class="card"><h2>ShareIt</h2><p class="mut">Share underused labs, rooms and equipment safely.</p>
+    ${reg&&h`<label>Name</label><input value=${name} onInput=${e=>setName(e.target.value)} style="width:100%"/>`}
+    <label>Email</label><input value=${email} onInput=${e=>setEmail(e.target.value)} style="width:100%"/>
+    <label>Password</label><input type="password" value=${password} onInput=${e=>setPw(e.target.value)} style="width:100%"/>
+    <div class="row" style="margin-top:12px"><button class="btn pri" onClick=${go}>${reg?"Register":"Sign in"}</button>
+    <button class="btn" onClick=${()=>setReg(!reg)}>${reg?"Back":"Register"}</button></div></div>
+    <div class="card"><b>Demo accounts</b> <span class="mut">(password demo123)</span><div class="row" style="margin-top:8px">
+    ${demos.map(([k,l])=>h`<button class="btn sm" onClick=${()=>{setEmail(k+"@demo.edu");setPw("demo123")}}>${l}</button>`)}</div></div></main>`;
+}
+
+function BookingForm({r,onDone,flash}){
+  const s0=new Date(Date.now()+2*60000);
+  const [start,setStart]=useState(loc(s0)),[end,setEnd]=useState(loc(new Date(s0.getTime()+3600000))),[purpose,setP]=useState("");
+  const go=async()=>{try{const b=await api("/bookings","POST",{resource_id:r.id,start:iso(start),end:iso(end),purpose});flash(`Request ${b.status}: ${b.reason}`);onDone()}catch(e){flash(e)}};
+  return h`<div><b>Request booking</b><div class="row"><div><label>Start</label><input type="datetime-local" value=${start} onInput=${e=>setStart(e.target.value)}/></div>
+    <div><label>End</label><input type="datetime-local" value=${end} onInput=${e=>setEnd(e.target.value)}/></div></div>
+    <label>Purpose of use</label><textarea rows="2" value=${purpose} onInput=${e=>setP(e.target.value)}></textarea>
+    <div style="margin-top:10px"><button class="btn pri" onClick=${go}>Submit request</button></div></div>`;
+}
+
+function ResourceModal({id,onClose,flash,go}){
+  const [r,setR]=useState(null);
+  useEffect(()=>{api("/resources/"+id).then(setR).catch(flash)},[id]);
+  if(!r)return null;
+  const el=r.eligibility;
+  return h`<${Modal} onClose=${onClose}><div class="row"><h3 style="margin:0">${r.name}</h3><span class="sp"></span><button class="btn sm" onClick=${onClose}>Close</button></div>
+    <p class="mut">${r.category} · ${r.location} · Owner: ${r.owner_name}</p><p>${r.description}</p>
+    <div class="card"><b>Usage rules</b><br/>${r.rules||"-"}<br/><span class="mut">Max ${r.max_hours}h per booking · ${r.weekly_cap_hours}h per user per week · ${r.requires_approval?"Owner approval required":"Instant approval"}${r.deposit?` · Deposit ₹${r.deposit}`:""}</span></div>
+    <div class="card"><b>Requirements</b><br/>${r.requirements.length?r.requirements.join(", "):"None"}
+      ${!el.account_verified&&h`<div class="warn err">Your account is not verified yet.</div>`}
+      ${el.missing.length>0&&h`<div class="warn err">Missing verified credentials: ${el.missing.join(", ")}. Submit them under Credentials.</div>`}
+      ${el.eligible&&h`<div class="warn" style="background:#dcf3e4">You are eligible.</div>`}</div>
+    <div class="card"><b>Booked / unavailable</b>${r.busy.length?r.busy.map(b=>h`<div class="mut">${fmt(b.start)} → ${fmt(b.end)}</div>`):h`<div class="mut">Nothing booked.</div>`}
+      <div class="mut">Waitlist: ${r.waitlist_size} request(s)</div></div>
+    ${el.eligible&&h`<${BookingForm} r=${r} flash=${flash} onDone=${()=>{onClose();go("bookings")}}/>`}<//>`;
+}
+
+function NewResource({onClose,flash,onDone}){
+  const [f,setF]=useState({name:"",category:"",location:"",description:"",rules:"",req:"",max_hours:4,weekly_cap_hours:8,requires_approval:true,deposit:0});
+  const set=k=>e=>setF({...f,[k]:e.target.type==="checkbox"?e.target.checked:e.target.value});
+  const save=async()=>{try{await api("/resources","POST",{...f,requirements:f.req.split(","),max_hours:+f.max_hours,weekly_cap_hours:+f.weekly_cap_hours,deposit:+f.deposit});flash("Resource listed");onDone()}catch(e){flash(e)}};
+  const fld=(k,l,t="text")=>h`<label>${l}</label><input type=${t} value=${f[k]} onInput=${set(k)} style="width:100%"/>`;
+  return h`<${Modal} onClose=${onClose}><h3>List a resource</h3>${fld("name","Name")}${fld("category","Category")}${fld("location","Location")}
+    <label>Description</label><textarea rows="2" value=${f.description} onInput=${set("description")}></textarea>
+    <label>Usage rules</label><textarea rows="2" value=${f.rules} onInput=${set("rules")}></textarea>
+    ${fld("req","Required credentials (comma-separated)")}
+    <div class="row"><div>${fld("max_hours","Max hours / booking","number")}</div><div>${fld("weekly_cap_hours","Weekly cap / user (h)","number")}</div><div>${fld("deposit","Deposit","number")}</div></div>
+    <label><input type="checkbox" checked=${f.requires_approval} onChange=${set("requires_approval")}/> Requires owner approval</label>
+    <div class="row" style="margin-top:12px"><button class="btn pri" onClick=${save}>List resource</button><button class="btn" onClick=${onClose}>Cancel</button></div><//>`;
+}
+
+function Resources({user,flash,go}){
+  const [list,setList]=useState([]),[q,setQ]=useState(""),[cat,setCat]=useState(""),[el,setEl]=useState(false),[ff,setFf]=useState(""),[ft,setFt]=useState(""),[open,setOpen]=useState(null),[nw,setNw]=useState(false);
+  const load=()=>{const p=new URLSearchParams({q,category:cat,eligible:el});if(ff&&ft){p.set("free_from",iso(ff));p.set("free_to",iso(ft))}api("/resources?"+p).then(setList).catch(flash)};
+  useEffect(load,[q,cat,el,ff,ft]);
+  const cats=[...new Set(list.map(r=>r.category))];
+  return h`<div><div class="card row"><input placeholder="Search resources…" value=${q} onInput=${e=>setQ(e.target.value)}/>
+    <select value=${cat} onChange=${e=>setCat(e.target.value)}><option value="">All categories</option>${cats.map(c=>h`<option>${c}</option>`)}</select>
+    <label style="margin:0"><input type="checkbox" checked=${el} onChange=${e=>setEl(e.target.checked)}/> Only what I'm eligible for</label>
+    <span class="mut">Free:</span><input type="datetime-local" value=${ff} onInput=${e=>setFf(e.target.value)}/><input type="datetime-local" value=${ft} onInput=${e=>setFt(e.target.value)}/>
+    <span class="sp"></span>${["owner","manager","admin"].includes(user.role)&&h`<button class="btn pri" onClick=${()=>setNw(true)}>+ List resource</button>`}</div>
+    <div class="grid">${list.map(r=>h`<div class="card" key=${r.id}><div class="row"><b>${r.name}</b><span class="sp"></span><span class="badge">${r.category}</span></div>
+      <div class="mut">${r.location}</div><p style="margin:8px 0">${r.description}</p>
+      <div class="mut">Requires: ${r.requirements.join(", ")||"nothing"}</div>
+      <div class="row" style="margin-top:8px">${r.eligibility.eligible?h`<span class="badge verified">Eligible</span>`:h`<span class="badge rejected">${r.eligibility.account_verified?"Missing: "+r.eligibility.missing.join(", "):"Account unverified"}</span>`}
+      <span class="sp"></span><button class="btn sm pri" onClick=${()=>setOpen(r.id)}>View / book</button></div></div>`)}</div>
+    ${!list.length&&h`<p class="mut">No resources match.</p>`}
+    ${open&&h`<${ResourceModal} id=${open} onClose=${()=>{setOpen(null);load()}} flash=${flash} go=${go}/>`}
+    ${nw&&h`<${NewResource} onClose=${()=>setNw(false)} flash=${flash} onDone=${()=>{setNw(false);load()}}/>`}</div>`;
+}
+
+function ConditionModal({title,onSubmit,onClose}){
+  const [rating,setR]=useState("good"),[notes,setN]=useState("");
+  return h`<${Modal} onClose=${onClose}><h3>${title}</h3><label>Condition</label><select value=${rating} onChange=${e=>setR(e.target.value)}><option>good</option><option>fair</option><option>damaged</option></select>
+    <label>Notes (scratches, missing parts, etc.)</label><textarea rows="3" value=${notes} onInput=${e=>setN(e.target.value)}></textarea>
+    <div class="row" style="margin-top:12px"><button class="btn pri" onClick=${()=>onSubmit({rating,notes})}>Record</button><button class="btn" onClick=${onClose}>Cancel</button></div><//>`;
+}
+
+function Detail({id,user,onClose,flash,reload}){
+  const [b,setB]=useState(null),[inc,setInc]=useState(false);
+  const load=()=>api("/bookings/"+id).then(setB).catch(flash);
+  useEffect(()=>{load()},[id]);
+  if(!b)return null;
+  const run=async(fn)=>{try{await fn();await load();reload()}catch(e){flash(e)}};
+  return h`<${Modal} onClose=${onClose}><div class="row"><h3 style="margin:0">Booking #${b.id} · ${b.resource_name}</h3><span class="sp"></span><${Badge} s=${b.status}/></div>
+    <p class="mut">${fmt(b.start)} → ${fmt(b.end)} · ${b.location}<br/>Borrower: ${b.user_name}${b.user_email?" ("+b.user_email+")":""}<br/>Purpose: ${b.purpose}</p>
+    <div class="warn"><b>Why:</b> ${b.reason}${b.decided_by?` <span class="mut">— ${b.decided_by}</span>`:""}</div>
+    <div class="row"><div class="card sp"><b>Check-in</b><br/>${b.checkin_at?`${fmt(b.checkin_at)} · ${b.checkin_rating}<br/>${b.checkin_notes}`:"-"}</div>
+    <div class="card sp"><b>Return</b><br/>${b.returned_at?`${fmt(b.returned_at)} · ${b.return_rating}<br/>${b.return_notes}`:"-"}</div></div>
+    ${b.incidents.length>0&&h`<b>Incidents</b>${b.incidents.map(i=>h`<div class="card"><${Badge} s=${i.kind}/> <${Badge} s=${i.status}/> <span class="mut">by ${i.reporter}</span><br/>${i.description}${i.resolution&&h`<br/><b>Resolution:</b> ${i.resolution}`}
+      ${b.staff&&i.status==="open"&&h`<div style="margin-top:6px"><button class="btn sm ok" onClick=${()=>{const t=prompt("Resolution note");t&&run(()=>api("/incidents/"+i.id+"/resolve","POST",{reason:t}))}}>Resolve</button></div>`}</div>`)}`}
+    <div class="row" style="margin:8px 0"><button class="btn sm" onClick=${()=>setInc(true)}>Report incident</button></div>
+    <b>Activity history</b><div class="tl">${b.history.map(a=>h`<div><b>${a.action}</b> <span class="mut">· ${a.actor} · ${fmt(a.ts)}</span><br/>${a.detail}</div>`)}</div>
+    ${inc&&h`<${IncidentForm} onClose=${()=>setInc(false)} onSubmit=${(x)=>{setInc(false);run(()=>api("/bookings/"+id+"/incidents","POST",x))}}/>`}<//>`;
+}
+function IncidentForm({onSubmit,onClose}){
+  const [kind,setK]=useState("damage"),[description,setD]=useState("");
+  return h`<${Modal} onClose=${onClose}><h3>Report incident</h3><select value=${kind} onChange=${e=>setK(e.target.value)}><option>damage</option><option>delay</option><option>conflict</option><option>other</option></select>
+  <label>What happened?</label><textarea rows="3" value=${description} onInput=${e=>setD(e.target.value)}></textarea>
+  <div class="row" style="margin-top:12px"><button class="btn pri" onClick=${()=>description&&onSubmit({kind,description})}>Submit</button><button class="btn" onClick=${onClose}>Cancel</button></div><//>`;
+}
+
+function Bookings({user,flash}){
+  const staff=user.role!=="user";
+  const [scope,setScope]=useState(staff?"manage":"mine"),[list,setList]=useState([]),[open,setOpen]=useState(null),[cond,setCond]=useState(null);
+  const load=()=>api("/bookings?scope="+scope).then(setList).catch(flash);
+  useEffect(()=>{load()},[scope]);
+  const act=async(fn)=>{try{await fn();load()}catch(e){flash(e)}};
+  const ask=(msg,req)=>{const t=prompt(msg);return t===null||(req&&!t.trim())?null:t};
+  const post=(id,p,body={})=>act(()=>api(`/bookings/${id}/${p}`,"POST",body));
+  return h`<div>${staff&&h`<div class="row" style="margin-bottom:10px"><button class=${"btn sm "+(scope==="manage"?"pri":"")} onClick=${()=>setScope("manage")}>Requests on my resources</button><button class=${"btn sm "+(scope==="mine"?"pri":"")} onClick=${()=>setScope("mine")}>My bookings</button></div>`}
+    ${scope==="manage"&&h`<p class="mut">Pending requests are ordered by fairness rule: least recent usage (last 30 days) first, then request time.</p>`}
+    ${list.map(b=>h`<div class="card" key=${b.id}><div class="row"><b>#${b.id} ${b.resource_name}</b><${Badge} s=${b.status}/><span class="sp"></span><span class="mut">${fmt(b.start)} → ${fmt(b.end)}</span></div>
+      <div class="mut">${scope==="manage"?`${b.user_name} · used ${b.usage30}h in last 30 days · `:""}${b.purpose}</div><div style="margin:6px 0">${b.reason}</div>
+      <div class="row"><button class="btn sm" onClick=${()=>setOpen(b.id)}>Details & history</button>
+      ${scope==="manage"&&["pending","waitlisted"].includes(b.status)&&h`<button class="btn sm ok" onClick=${()=>{const t=ask("Approval note (optional)");t!==null&&post(b.id,"decision",{decision:"approve",reason:t})}}>Approve</button>
+        ${b.status==="pending"&&h`<button class="btn sm" onClick=${()=>{const t=ask("Waitlist reason (optional)");t!==null&&post(b.id,"decision",{decision:"waitlist",reason:t})}}>Waitlist</button>`}
+        <button class="btn sm bad" onClick=${()=>{const t=ask("Rejection reason (required)",true);t&&post(b.id,"decision",{decision:"reject",reason:t})}}>Reject</button>`}
+      ${b.is_mine&&b.status==="approved"&&h`<button class="btn sm pri" onClick=${()=>setCond({title:"Check in: record initial condition",fn:x=>post(b.id,"checkin",x)})}>Check in</button>`}
+      ${(b.is_mine||scope==="manage")&&["checked_in","overdue"].includes(b.status)&&h`<button class="btn sm pri" onClick=${()=>setCond({title:"Return: record final condition",fn:x=>post(b.id,"return",x)})}>Return</button>`}
+      ${b.is_mine&&["approved","checked_in"].includes(b.status)&&h`<button class="btn sm" onClick=${()=>{const t=prompt("New end time (YYYY-MM-DD HH:MM, local)");t&&post(b.id,"extend",{new_end:new Date(t.replace(" ","T")).toISOString()})}}>Extend</button>`}
+      ${["pending","approved","waitlisted"].includes(b.status)&&h`<button class="btn sm" onClick=${()=>{const t=ask("Cancellation reason");t!==null&&post(b.id,"cancel",{reason:t})}}>Cancel</button>`}</div></div>`)}
+    ${!list.length&&h`<p class="mut">Nothing here yet.</p>`}
+    ${open&&h`<${Detail} id=${open} user=${user} onClose=${()=>setOpen(null)} flash=${flash} reload=${load}/>`}
+    ${cond&&h`<${ConditionModal} title=${cond.title} onClose=${()=>setCond(null)} onSubmit=${x=>{cond.fn(x);setCond(null)}}/>`}</div>`;
+}
+
+function Credentials({user,flash}){
+  const [mine,setMine]=useState([]),[queue,setQueue]=useState([]),[name,setName]=useState(""),[ev,setEv]=useState("");
+  const staff=user.role!=="user";
+  const load=()=>{api("/credentials").then(setMine).catch(flash);staff&&api("/credentials?scope=review").then(setQueue).catch(flash)};
+  useEffect(load,[]);
+  const submit=async()=>{try{await api("/credentials","POST",{name,evidence:ev});setName("");setEv("");flash("Submitted for review");load()}catch(e){flash(e)}};
+  const review=async(id,approve)=>{const note=prompt("Note (optional)")??"";try{await api(`/credentials/${id}/review`,"POST",{approve,note});load()}catch(e){flash(e)}};
+  return h`<div>${staff&&h`<div class="card"><b>Credential verification queue</b>${queue.map(c=>h`<div class="row" style="margin-top:8px"><span><b>${c.user_name}</b>: ${c.name} <span class="mut">${c.evidence}</span></span><span class="sp"></span>
+      <button class="btn sm ok" onClick=${()=>review(c.id,true)}>Verify</button><button class="btn sm bad" onClick=${()=>review(c.id,false)}>Reject</button></div>`)}${!queue.length&&h`<div class="mut">Nothing pending.</div>`}</div>`}
+    <div class="card"><b>My credentials</b>${mine.map(c=>h`<div class="row" style="margin-top:6px">${c.name}<${Badge} s=${c.status}/><span class="mut">${c.note}</span></div>`)}${!mine.length&&h`<div class="mut">None yet.</div>`}</div>
+    <div class="card"><b>Submit a credential</b><label>Name (must match a resource requirement, e.g. "Lab Safety Training")</label><input value=${name} onInput=${e=>setName(e.target.value)} style="width:100%"/>
+    <label>Evidence (certificate ID, supervisor name…)</label><input value=${ev} onInput=${e=>setEv(e.target.value)} style="width:100%"/>
+    <div style="margin-top:10px"><button class="btn pri" onClick=${submit}>Submit for verification</button></div></div></div>`;
+}
+
+function Admin({flash}){
+  const [users,setUsers]=useState([]),[log,setLog]=useState([]);
+  const load=()=>{api("/admin/users").then(setUsers).catch(flash);api("/admin/audit").then(setLog).catch(flash)};
+  useEffect(load,[]);
+  const patch=async(id,b)=>{try{await api("/admin/users/"+id,"POST",b);load()}catch(e){flash(e)}};
+  return h`<div><div class="card"><b>Users</b><table><tr><th>Name</th><th>Email</th><th>Role</th><th>Verified</th></tr>
+    ${users.map(u=>h`<tr><td>${u.name}</td><td>${u.email}</td><td><select value=${u.role} onChange=${e=>patch(u.id,{role:e.target.value})}>${["user","owner","manager","admin"].map(r=>h`<option>${r}</option>`)}</select></td>
+    <td><input type="checkbox" checked=${u.verified} onChange=${e=>patch(u.id,{verified:e.target.checked})}/></td></tr>`)}</table></div>
+    <div class="card"><b>Audit log (latest 300)</b><table><tr><th>When</th><th>Actor</th><th>Action</th><th>Booking</th><th>Detail</th></tr>
+    ${log.map(a=>h`<tr><td>${fmt(a.ts)}</td><td>${a.actor}</td><td>${a.action}</td><td>${a.booking_id??""}</td><td>${a.detail}</td></tr>`)}</table></div></div>`;
+}
+
+function Notifs({flash}){
+  const [l,setL]=useState([]);
+  useEffect(()=>{api("/notifications").then(setL).catch(flash)},[]);
+  return h`<div>${l.map(n=>h`<div class="card"><span class="mut">${fmt(n.ts)}</span><br/>${n.message}</div>`)}${!l.length&&h`<p class="mut">No notifications.</p>`}</div>`;
+}
+
+function App(){
+  const [user,setUser]=useState(null),[view,setView]=useState("resources"),[toast,setToast]=useState(""),[unread,setUnread]=useState(0),[boot,setBoot]=useState(!!tok);
+  const flash=m=>{setToast(String(m));clearTimeout(window._t);window._t=setTimeout(()=>setToast(""),5000)};
+  useEffect(()=>{tok?api("/me").then(setUser).catch(()=>{tok="";localStorage.removeItem("tok")}).finally(()=>setBoot(false)):setBoot(false)},[]);
+  useEffect(()=>{if(!user)return;const f=()=>api("/notifications/unread").then(r=>setUnread(r.count)).catch(()=>{});f();const i=setInterval(f,10000);return()=>clearInterval(i)},[user,view]);
+  if(boot)return null;
+  if(!user)return h`<div><${Login} onLogin=${setUser} flash=${flash}/>${toast&&h`<div class="toast">${toast}</div>`}</div>`;
+  const staff=user.role!=="user";
+  const tabs=[["resources","Resources"],["bookings",staff?"Bookings & requests":"My bookings"],["creds","Credentials"],["notifs"+"","Notifications"+(unread?` (${unread})`:"")],...(user.role==="admin"?[["admin","Admin"]]:[])];
+  const out=()=>{api("/me");tok="";localStorage.removeItem("tok");setUser(null)};
+  return h`<div><header><b>ShareIt</b><nav class="row">${tabs.map(([k,l])=>h`<button class=${view===k?"on":""} onClick=${()=>setView(k)}>${l}</button>`)}</nav><span class="sp"></span>
+    <span class="mut">${user.name} · ${user.role}${user.verified?"":" · unverified"}</span><button class="btn sm" onClick=${out}>Sign out</button></header>
+    <main>${view==="resources"&&h`<${Resources} user=${user} flash=${flash} go=${setView}/>`}${view==="bookings"&&h`<${Bookings} user=${user} flash=${flash}/>`}
+    ${view==="creds"&&h`<${Credentials} user=${user} flash=${flash}/>`}${view==="notifs"&&h`<${Notifs} flash=${flash}/>`}${view==="admin"&&h`<${Admin} flash=${flash}/>`}</main>
+    ${toast&&h`<div class="toast">${toast}</div>`}</div>`;
+}
+createRoot(document.getElementById("root")).render(h`<${App}/>`);
+</script>
+</body>
+</html>
