@@ -58,13 +58,13 @@ function Login({onLogin,flash}){
     const r=await api("/login","POST",{email,password});tok=r.token;localStorage.setItem("tok",tok);onLogin(r.user)
   }catch(e){flash(e)}};
   const demos=[["asha","Student (eligible)"],["ben","Student (no credentials)"],["chen","Student (unverified)"],["owner","Owner"],["manager","Manager"],["admin","Admin"]];
-  return h`<main style="max-width:420px"><div class="card"><h2>ShareIt</h2><p class="mut">Share underused labs, rooms and equipment safely.</p>
-    ${reg&&h`<label>Name</label><input value=${name} onInput=${e=>setName(e.target.value)} style="width:100%"/>`}
-    <label>Email</label><input value=${email} onInput=${e=>setEmail(e.target.value)} style="width:100%"/>
-    <label>Password</label><input type="password" value=${password} onInput=${e=>setPw(e.target.value)} style="width:100%"/>
-    <div class="row" style="margin-top:12px"><button class="btn pri" onClick=${go}>${reg?"Register":"Sign in"}</button>
+  return h`<main style=${{maxWidth:"420px"}}><div class="card"><h2>ShareIt</h2><p class="mut">Share underused labs, rooms and equipment safely.</p>
+    ${reg&&h`<label>Name</label><input value=${name} onInput=${e=>setName(e.target.value)} style=${{width:"100%"}}/>`}
+    <label>Email</label><input value=${email} onInput=${e=>setEmail(e.target.value)} style=${{width:"100%"}}/>
+    <label>Password</label><input type="password" value=${password} onInput=${e=>setPw(e.target.value)} style=${{width:"100%"}}/>
+    <div class="row" style=${{marginTop:"12px"}}><button class="btn pri" onClick=${go}>${reg?"Register":"Sign in"}</button>
     <button class="btn" onClick=${()=>setReg(!reg)}>${reg?"Back":"Register"}</button></div></div>
-    <div class="card"><b>Demo accounts</b> <span class="mut">(password demo123)</span><div class="row" style="margin-top:8px">
+    <div class="card"><b>Demo accounts</b> <span class="mut">(password demo123)</span><div class="row" style=${{marginTop:"8px"}}>
     ${demos.map(([k,l])=>h`<button class="btn sm" onClick=${()=>{setEmail(k+"@demo.edu");setPw("demo123")}}>${l}</button>`)}</div></div></main>`;
 }
 
@@ -75,7 +75,7 @@ function BookingForm({r,onDone,flash}){
   return h`<div><b>Request booking</b><div class="row"><div><label>Start</label><input type="datetime-local" value=${start} onInput=${e=>setStart(e.target.value)}/></div>
     <div><label>End</label><input type="datetime-local" value=${end} onInput=${e=>setEnd(e.target.value)}/></div></div>
     <label>Purpose of use</label><textarea rows="2" value=${purpose} onInput=${e=>setP(e.target.value)}></textarea>
-    <div style="margin-top:10px"><button class="btn pri" onClick=${go}>Submit request</button></div></div>`;
+    <div style=${{marginTop:"10px"}}><button class="btn pri" onClick=${go}>Submit request</button></div></div>`;
 }
 
 function ResourceModal({id,onClose,flash,go}){
@@ -83,13 +83,13 @@ function ResourceModal({id,onClose,flash,go}){
   useEffect(()=>{api("/resources/"+id).then(setR).catch(flash)},[id]);
   if(!r)return null;
   const el=r.eligibility;
-  return h`<${Modal} onClose=${onClose}><div class="row"><h3 style="margin:0">${r.name}</h3><span class="sp"></span><button class="btn sm" onClick=${onClose}>Close</button></div>
+  return h`<${Modal} onClose=${onClose}><div class="row"><h3 style=${{margin:"0"}}>${r.name}</h3><span class="sp"></span><button class="btn sm" onClick=${onClose}>Close</button></div>
     <p class="mut">${r.category} · ${r.location} · Owner: ${r.owner_name}</p><p>${r.description}</p>
     <div class="card"><b>Usage rules</b><br/>${r.rules||"-"}<br/><span class="mut">Max ${r.max_hours}h per booking · ${r.weekly_cap_hours}h per user per week · ${r.requires_approval?"Owner approval required":"Instant approval"}${r.deposit?` · Deposit ₹${r.deposit}`:""}</span></div>
     <div class="card"><b>Requirements</b><br/>${r.requirements.length?r.requirements.join(", "):"None"}
       ${!el.account_verified&&h`<div class="warn err">Your account is not verified yet.</div>`}
       ${el.missing.length>0&&h`<div class="warn err">Missing verified credentials: ${el.missing.join(", ")}. Submit them under Credentials.</div>`}
-      ${el.eligible&&h`<div class="warn" style="background:#dcf3e4">You are eligible.</div>`}</div>
+      ${el.eligible&&h`<div class="warn" style=${{background:"#dcf3e4"}}>You are eligible.</div>`}</div>
     <div class="card"><b>Booked / unavailable</b>${r.busy.length?r.busy.map(b=>h`<div class="mut">${fmt(b.start)} → ${fmt(b.end)}</div>`):h`<div class="mut">Nothing booked.</div>`}
       <div class="mut">Waitlist: ${r.waitlist_size} request(s)</div></div>
     ${el.eligible&&h`<${BookingForm} r=${r} flash=${flash} onDone=${()=>{onClose();go("bookings")}}/>`}<//>`;
@@ -99,14 +99,14 @@ function NewResource({onClose,flash,onDone}){
   const [f,setF]=useState({name:"",category:"",location:"",description:"",rules:"",req:"",max_hours:4,weekly_cap_hours:8,requires_approval:true,deposit:0});
   const set=k=>e=>setF({...f,[k]:e.target.type==="checkbox"?e.target.checked:e.target.value});
   const save=async()=>{try{await api("/resources","POST",{...f,requirements:f.req.split(","),max_hours:+f.max_hours,weekly_cap_hours:+f.weekly_cap_hours,deposit:+f.deposit});flash("Resource listed");onDone()}catch(e){flash(e)}};
-  const fld=(k,l,t="text")=>h`<label>${l}</label><input type=${t} value=${f[k]} onInput=${set(k)} style="width:100%"/>`;
+  const fld=(k,l,t="text")=>h`<label>${l}</label><input type=${t} value=${f[k]} onInput=${set(k)} style=${{width:"100%"}}/>`;
   return h`<${Modal} onClose=${onClose}><h3>List a resource</h3>${fld("name","Name")}${fld("category","Category")}${fld("location","Location")}
     <label>Description</label><textarea rows="2" value=${f.description} onInput=${set("description")}></textarea>
     <label>Usage rules</label><textarea rows="2" value=${f.rules} onInput=${set("rules")}></textarea>
     ${fld("req","Required credentials (comma-separated)")}
     <div class="row"><div>${fld("max_hours","Max hours / booking","number")}</div><div>${fld("weekly_cap_hours","Weekly cap / user (h)","number")}</div><div>${fld("deposit","Deposit","number")}</div></div>
     <label><input type="checkbox" checked=${f.requires_approval} onChange=${set("requires_approval")}/> Requires owner approval</label>
-    <div class="row" style="margin-top:12px"><button class="btn pri" onClick=${save}>List resource</button><button class="btn" onClick=${onClose}>Cancel</button></div><//>`;
+    <div class="row" style=${{marginTop:"12px"}}><button class="btn pri" onClick=${save}>List resource</button><button class="btn" onClick=${onClose}>Cancel</button></div><//>`;
 }
 
 function Resources({user,flash,go}){
@@ -116,13 +116,13 @@ function Resources({user,flash,go}){
   const cats=[...new Set(list.map(r=>r.category))];
   return h`<div><div class="card row"><input placeholder="Search resources…" value=${q} onInput=${e=>setQ(e.target.value)}/>
     <select value=${cat} onChange=${e=>setCat(e.target.value)}><option value="">All categories</option>${cats.map(c=>h`<option>${c}</option>`)}</select>
-    <label style="margin:0"><input type="checkbox" checked=${el} onChange=${e=>setEl(e.target.checked)}/> Only what I'm eligible for</label>
+    <label style=${{margin:"0"}}><input type="checkbox" checked=${el} onChange=${e=>setEl(e.target.checked)}/> Only what I'm eligible for</label>
     <span class="mut">Free:</span><input type="datetime-local" value=${ff} onInput=${e=>setFf(e.target.value)}/><input type="datetime-local" value=${ft} onInput=${e=>setFt(e.target.value)}/>
     <span class="sp"></span>${["owner","manager","admin"].includes(user.role)&&h`<button class="btn pri" onClick=${()=>setNw(true)}>+ List resource</button>`}</div>
     <div class="grid">${list.map(r=>h`<div class="card" key=${r.id}><div class="row"><b>${r.name}</b><span class="sp"></span><span class="badge">${r.category}</span></div>
-      <div class="mut">${r.location}</div><p style="margin:8px 0">${r.description}</p>
+      <div class="mut">${r.location}</div><p style=${{margin:"8px 0"}}>${r.description}</p>
       <div class="mut">Requires: ${r.requirements.join(", ")||"nothing"}</div>
-      <div class="row" style="margin-top:8px">${r.eligibility.eligible?h`<span class="badge verified">Eligible</span>`:h`<span class="badge rejected">${r.eligibility.account_verified?"Missing: "+r.eligibility.missing.join(", "):"Account unverified"}</span>`}
+      <div class="row" style=${{marginTop:"8px"}}>${r.eligibility.eligible?h`<span class="badge verified">Eligible</span>`:h`<span class="badge rejected">${r.eligibility.account_verified?"Missing: "+r.eligibility.missing.join(", "):"Account unverified"}</span>`}
       <span class="sp"></span><button class="btn sm pri" onClick=${()=>setOpen(r.id)}>View / book</button></div></div>`)}</div>
     ${!list.length&&h`<p class="mut">No resources match.</p>`}
     ${open&&h`<${ResourceModal} id=${open} onClose=${()=>{setOpen(null);load()}} flash=${flash} go=${go}/>`}
@@ -133,7 +133,7 @@ function ConditionModal({title,onSubmit,onClose}){
   const [rating,setR]=useState("good"),[notes,setN]=useState("");
   return h`<${Modal} onClose=${onClose}><h3>${title}</h3><label>Condition</label><select value=${rating} onChange=${e=>setR(e.target.value)}><option>good</option><option>fair</option><option>damaged</option></select>
     <label>Notes (scratches, missing parts, etc.)</label><textarea rows="3" value=${notes} onInput=${e=>setN(e.target.value)}></textarea>
-    <div class="row" style="margin-top:12px"><button class="btn pri" onClick=${()=>onSubmit({rating,notes})}>Record</button><button class="btn" onClick=${onClose}>Cancel</button></div><//>`;
+    <div class="row" style=${{marginTop:"12px"}}><button class="btn pri" onClick=${()=>onSubmit({rating,notes})}>Record</button><button class="btn" onClick=${onClose}>Cancel</button></div><//>`;
 }
 
 function Detail({id,user,onClose,flash,reload}){
@@ -142,14 +142,14 @@ function Detail({id,user,onClose,flash,reload}){
   useEffect(()=>{load()},[id]);
   if(!b)return null;
   const run=async(fn)=>{try{await fn();await load();reload()}catch(e){flash(e)}};
-  return h`<${Modal} onClose=${onClose}><div class="row"><h3 style="margin:0">Booking #${b.id} · ${b.resource_name}</h3><span class="sp"></span><${Badge} s=${b.status}/></div>
+  return h`<${Modal} onClose=${onClose}><div class="row"><h3 style=${{margin:"0"}}>Booking #${b.id} · ${b.resource_name}</h3><span class="sp"></span><${Badge} s=${b.status}/></div>
     <p class="mut">${fmt(b.start)} → ${fmt(b.end)} · ${b.location}<br/>Borrower: ${b.user_name}${b.user_email?" ("+b.user_email+")":""}<br/>Purpose: ${b.purpose}</p>
     <div class="warn"><b>Why:</b> ${b.reason}${b.decided_by?` <span class="mut">— ${b.decided_by}</span>`:""}</div>
     <div class="row"><div class="card sp"><b>Check-in</b><br/>${b.checkin_at?`${fmt(b.checkin_at)} · ${b.checkin_rating}<br/>${b.checkin_notes}`:"-"}</div>
     <div class="card sp"><b>Return</b><br/>${b.returned_at?`${fmt(b.returned_at)} · ${b.return_rating}<br/>${b.return_notes}`:"-"}</div></div>
     ${b.incidents.length>0&&h`<b>Incidents</b>${b.incidents.map(i=>h`<div class="card"><${Badge} s=${i.kind}/> <${Badge} s=${i.status}/> <span class="mut">by ${i.reporter}</span><br/>${i.description}${i.resolution&&h`<br/><b>Resolution:</b> ${i.resolution}`}
-      ${b.staff&&i.status==="open"&&h`<div style="margin-top:6px"><button class="btn sm ok" onClick=${()=>{const t=prompt("Resolution note");t&&run(()=>api("/incidents/"+i.id+"/resolve","POST",{reason:t}))}}>Resolve</button></div>`}</div>`)}`}
-    <div class="row" style="margin:8px 0"><button class="btn sm" onClick=${()=>setInc(true)}>Report incident</button></div>
+      ${b.staff&&i.status==="open"&&h`<div style=${{marginTop:"6px"}}><button class="btn sm ok" onClick=${()=>{const t=prompt("Resolution note");t&&run(()=>api("/incidents/"+i.id+"/resolve","POST",{reason:t}))}}>Resolve</button></div>`}</div>`)}`}
+    <div class="row" style=${{margin:"8px 0"}}><button class="btn sm" onClick=${()=>setInc(true)}>Report incident</button></div>
     <b>Activity history</b><div class="tl">${b.history.map(a=>h`<div><b>${a.action}</b> <span class="mut">· ${a.actor} · ${fmt(a.ts)}</span><br/>${a.detail}</div>`)}</div>
     ${inc&&h`<${IncidentForm} onClose=${()=>setInc(false)} onSubmit=${(x)=>{setInc(false);run(()=>api("/bookings/"+id+"/incidents","POST",x))}}/>`}<//>`;
 }
@@ -157,7 +157,7 @@ function IncidentForm({onSubmit,onClose}){
   const [kind,setK]=useState("damage"),[description,setD]=useState("");
   return h`<${Modal} onClose=${onClose}><h3>Report incident</h3><select value=${kind} onChange=${e=>setK(e.target.value)}><option>damage</option><option>delay</option><option>conflict</option><option>other</option></select>
   <label>What happened?</label><textarea rows="3" value=${description} onInput=${e=>setD(e.target.value)}></textarea>
-  <div class="row" style="margin-top:12px"><button class="btn pri" onClick=${()=>description&&onSubmit({kind,description})}>Submit</button><button class="btn" onClick=${onClose}>Cancel</button></div><//>`;
+  <div class="row" style=${{marginTop:"12px"}}><button class="btn pri" onClick=${()=>description&&onSubmit({kind,description})}>Submit</button><button class="btn" onClick=${onClose}>Cancel</button></div><//>`;
 }
 
 function Bookings({user,flash}){
@@ -168,10 +168,10 @@ function Bookings({user,flash}){
   const act=async(fn)=>{try{await fn();load()}catch(e){flash(e)}};
   const ask=(msg,req)=>{const t=prompt(msg);return t===null||(req&&!t.trim())?null:t};
   const post=(id,p,body={})=>act(()=>api(`/bookings/${id}/${p}`,"POST",body));
-  return h`<div>${staff&&h`<div class="row" style="margin-bottom:10px"><button class=${"btn sm "+(scope==="manage"?"pri":"")} onClick=${()=>setScope("manage")}>Requests on my resources</button><button class=${"btn sm "+(scope==="mine"?"pri":"")} onClick=${()=>setScope("mine")}>My bookings</button></div>`}
+  return h`<div>${staff&&h`<div class="row" style=${{marginBottom:"10px"}}><button class=${"btn sm "+(scope==="manage"?"pri":"")} onClick=${()=>setScope("manage")}>Requests on my resources</button><button class=${"btn sm "+(scope==="mine"?"pri":"")} onClick=${()=>setScope("mine")}>My bookings</button></div>`}
     ${scope==="manage"&&h`<p class="mut">Pending requests are ordered by fairness rule: least recent usage (last 30 days) first, then request time.</p>`}
     ${list.map(b=>h`<div class="card" key=${b.id}><div class="row"><b>#${b.id} ${b.resource_name}</b><${Badge} s=${b.status}/><span class="sp"></span><span class="mut">${fmt(b.start)} → ${fmt(b.end)}</span></div>
-      <div class="mut">${scope==="manage"?`${b.user_name} · used ${b.usage30}h in last 30 days · `:""}${b.purpose}</div><div style="margin:6px 0">${b.reason}</div>
+      <div class="mut">${scope==="manage"?`${b.user_name} · used ${b.usage30}h in last 30 days · `:""}${b.purpose}</div><div style=${{margin:"6px 0"}}>${b.reason}</div>
       <div class="row"><button class="btn sm" onClick=${()=>setOpen(b.id)}>Details & history</button>
       ${scope==="manage"&&["pending","waitlisted"].includes(b.status)&&h`<button class="btn sm ok" onClick=${()=>{const t=ask("Approval note (optional)");t!==null&&post(b.id,"decision",{decision:"approve",reason:t})}}>Approve</button>
         ${b.status==="pending"&&h`<button class="btn sm" onClick=${()=>{const t=ask("Waitlist reason (optional)");t!==null&&post(b.id,"decision",{decision:"waitlist",reason:t})}}>Waitlist</button>`}
@@ -192,12 +192,12 @@ function Credentials({user,flash}){
   useEffect(load,[]);
   const submit=async()=>{try{await api("/credentials","POST",{name,evidence:ev});setName("");setEv("");flash("Submitted for review");load()}catch(e){flash(e)}};
   const review=async(id,approve)=>{const note=prompt("Note (optional)")??"";try{await api(`/credentials/${id}/review`,"POST",{approve,note});load()}catch(e){flash(e)}};
-  return h`<div>${staff&&h`<div class="card"><b>Credential verification queue</b>${queue.map(c=>h`<div class="row" style="margin-top:8px"><span><b>${c.user_name}</b>: ${c.name} <span class="mut">${c.evidence}</span></span><span class="sp"></span>
+  return h`<div>${staff&&h`<div class="card"><b>Credential verification queue</b>${queue.map(c=>h`<div class="row" style=${{marginTop:"8px"}}><span><b>${c.user_name}</b>: ${c.name} <span class="mut">${c.evidence}</span></span><span class="sp"></span>
       <button class="btn sm ok" onClick=${()=>review(c.id,true)}>Verify</button><button class="btn sm bad" onClick=${()=>review(c.id,false)}>Reject</button></div>`)}${!queue.length&&h`<div class="mut">Nothing pending.</div>`}</div>`}
-    <div class="card"><b>My credentials</b>${mine.map(c=>h`<div class="row" style="margin-top:6px">${c.name}<${Badge} s=${c.status}/><span class="mut">${c.note}</span></div>`)}${!mine.length&&h`<div class="mut">None yet.</div>`}</div>
-    <div class="card"><b>Submit a credential</b><label>Name (must match a resource requirement, e.g. "Lab Safety Training")</label><input value=${name} onInput=${e=>setName(e.target.value)} style="width:100%"/>
-    <label>Evidence (certificate ID, supervisor name…)</label><input value=${ev} onInput=${e=>setEv(e.target.value)} style="width:100%"/>
-    <div style="margin-top:10px"><button class="btn pri" onClick=${submit}>Submit for verification</button></div></div></div>`;
+    <div class="card"><b>My credentials</b>${mine.map(c=>h`<div class="row" style=${{marginTop:"6px"}}>${c.name}<${Badge} s=${c.status}/><span class="mut">${c.note}</span></div>`)}${!mine.length&&h`<div class="mut">None yet.</div>`}</div>
+    <div class="card"><b>Submit a credential</b><label>Name (must match a resource requirement, e.g. "Lab Safety Training")</label><input value=${name} onInput=${e=>setName(e.target.value)} style=${{width:"100%"}}/>
+    <label>Evidence (certificate ID, supervisor name…)</label><input value=${ev} onInput=${e=>setEv(e.target.value)} style=${{width:"100%"}}/>
+    <div style=${{marginTop:"10px"}}><button class="btn pri" onClick=${submit}>Submit for verification</button></div></div></div>`;
 }
 
 function Admin({flash}){
